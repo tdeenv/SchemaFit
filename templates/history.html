@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>SchemaFit History</title>
+  <style>
+    body { font-family: sans-serif; max-width: 800px; margin: auto; padding: 1em; }
+    .workout { border: 1px solid #ccc; padding: 1em; margin-bottom: 1em; }
+    .exercise { margin-left: 1em; margin-top: 0.5em; }
+    .set { margin-left: 2em; }
+    a { text-decoration: none; color: #007BFF; }
+  </style>
+</head>
+<body>
+  <h1>SchemaFit Workout History</h1>
+  <p><a href="{{ url_for('form') }}">&laquo; Log New Workout</a></p>
+  {% for w in workouts %}
+    <div class="workout">
+      <h2>{{ w.date }} — {{ w.type }}</h2>
+      <p><strong>Measurements:</strong>
+         Weight: {{ w.measurements.weight }} kg,
+         Arm: {{ w.measurements.arm }} cm,
+         Neck: {{ w.measurements.neck }} cm,
+         Quad: {{ w.measurements.quad }} cm,
+         Waist: {{ w.measurements.waist }} cm
+      </p>
+      {% for ex in w.exercises %}
+        <div class="exercise">
+          <h3>{{ ex.name }}</h3>
+          {% for s in ex.sets %}
+            <div class="set">
+              Weight: {{ s.weight }} kg — Reps: {{ s.reps }}{% if s.comment %} — Comment: {{ s.comment }}{% endif %}
+            </div>
+          {% endfor %}
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p>No workouts logged yet.</p>
+  {% endfor %}
+</body>
+</html>

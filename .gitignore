@@ -1,0 +1,13 @@
+# Ignore database files
+*.db
+
+# Ignore Python bytecode
+__pycache__/
+*.pyc
+
+# Ignore VS Code settings (optional)
+.vscode/
+
+# Ignore virtual environments (if any)
+venv/
+.env/
