@@ -4,17 +4,23 @@ from db import init_db, save_workout, fetch_all_workouts
 app = Flask(__name__)
 init_db()  # ensure tables exist
 
+def get_optional_float(field_name):
+    value = request.form.get(field_name, "").strip()
+    return float(value) if value else None
+
 @app.route('/', methods=['GET', 'POST'])
 def form():
     if request.method == 'POST':
         # Basic fields
         date = request.form['date']
         workout_type = request.form['workout_type']
-        weight = float(request.form['weight'])
-        arm = float(request.form['arm'])
-        neck = float(request.form['neck'])
-        quad = float(request.form['quad'])
-        waist = float(request.form['waist'])
+
+        # Optional body measurements
+        weight = get_optional_float('weight')
+        arm = get_optional_float('arm')
+        neck = get_optional_float('neck')
+        quad = get_optional_float('quad')
+        waist = get_optional_float('waist')
 
         # Collect lists
         names = request.form.getlist('exercise_name[]')

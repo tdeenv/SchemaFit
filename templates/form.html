@@ -19,17 +19,21 @@
     <label for="date">Date:</label><br>
     <input type="date" id="date" name="date" required><br><br>
 
+    <!-- Workout Type -->
+    <label for="workout_type">Workout Type:</label><br>
+    <input type="text" id="workout_type" name="workout_type" required><br><br>
+
     <!-- Body Measurements -->
     <label>Body Weight (kg):</label><br>
-    <input type="number" step="0.1" name="weight" required><br>
+    <input type="number" step="0.1" name="weight"><br>
     <label>Arm (cm):</label><br>
-    <input type="number" step="0.1" name="arm" required><br>
+    <input type="number" step="0.1" name="arm"><br>
     <label>Neck (cm):</label><br>
-    <input type="number" step="0.1" name="neck" required><br>
+    <input type="number" step="0.1" name="neck"><br>
     <label>Quad (cm):</label><br>
-    <input type="number" step="0.1" name="quad" required><br>
+    <input type="number" step="0.1" name="quad"><br>
     <label>Waist (cm):</label><br>
-    <input type="number" step="0.1" name="waist" required><br><br>
+    <input type="number" step="0.1" name="waist"><br><br>
 
     <!-- Exercises Container -->
     <div id="exercises-container"></div>
@@ -56,34 +60,44 @@
       <input type="number" name="reps[]" required>
       <label>Comment:</label>
       <input type="text" name="comment[]">
+      <input type="hidden" name="set_exercise_index[]" class="set-index">
       <button type="button" onclick="removeSet(this)">✕</button>
     </div>
   </template>
 
   <script>
+    function updateSetIndexes() {
+      document.querySelectorAll('.exercise').forEach((exerciseDiv, exIndex) => {
+        exerciseDiv.querySelectorAll('.set-index').forEach(input => {
+          input.value = exIndex;
+        });
+      });
+    }
+
     function addExercise() {
       const tpl = document.getElementById('exercise-template').content.cloneNode(true);
-      // Add one initial set
-      tpl.querySelector('.sets-container').appendChild(
-        document.getElementById('set-template').content.cloneNode(true)
-      );
+      const setNode = document.getElementById('set-template').content.cloneNode(true);
+      tpl.querySelector('.sets-container').appendChild(setNode);
       document.getElementById('exercises-container').appendChild(tpl);
+      updateSetIndexes();
     }
 
     function addSet(btn) {
       const exerciseDiv = btn.closest('.exercise');
       const setsContainer = exerciseDiv.querySelector('.sets-container');
-      setsContainer.appendChild(
-        document.getElementById('set-template').content.cloneNode(true)
-      );
+      const setNode = document.getElementById('set-template').content.cloneNode(true);
+      setsContainer.appendChild(setNode);
+      updateSetIndexes();
     }
 
     function removeExercise(btn) {
       btn.closest('.exercise').remove();
+      updateSetIndexes();
     }
 
     function removeSet(btn) {
       btn.closest('.set').remove();
+      updateSetIndexes();
     }
 
     // Add one exercise on page load
