@@ -2,41 +2,63 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>SchemaFit History</title>
-  <style>
-    body { font-family: sans-serif; max-width: 800px; margin: auto; padding: 1em; }
-    .workout { border: 1px solid #ccc; padding: 1em; margin-bottom: 1em; }
-    .exercise { margin-left: 1em; margin-top: 0.5em; }
-    .set { margin-left: 2em; }
-    a { text-decoration: none; color: #007BFF; }
-  </style>
+  <title>SchemaFit Workout History</title>
+  <!-- Source Code Pro Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Source+Code+Pro&display=swap" rel="stylesheet">
+  <!-- Tailwind CDN + Config -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Source Code Pro', 'monospace'],
+          },
+          colors: {
+            accent: {
+              light: '#3B823A',  /* Dark Green */
+              dark: '#9B4F96',   /* Purple */
+            }
+          }
+        }
+      }
+    }
+  </script>
 </head>
-<body>
-  <h1>SchemaFit Workout History</h1>
-  <p><a href="{{ url_for('form') }}">&laquo; Log New Workout</a></p>
-  {% for w in workouts %}
-    <div class="workout">
-      <h2>{{ w.date }} — {{ w.type }}</h2>
-      <p><strong>Measurements:</strong>
-         Weight: {{ w.measurements.weight }} kg,
-         Arm: {{ w.measurements.arm }} cm,
-         Neck: {{ w.measurements.neck }} cm,
-         Quad: {{ w.measurements.quad }} cm,
-         Waist: {{ w.measurements.waist }} cm
-      </p>
-      {% for ex in w.exercises %}
-        <div class="exercise">
-          <h3>{{ ex.name }}</h3>
+<body class="min-h-screen bg-gradient-to-br from-accent-light to-accent-dark font-sans flex items-center justify-center p-6">
+  <div class="w-full max-w-3xl bg-white/90 backdrop-blur-lg rounded-3xl shadow-xl p-8 space-y-6">
+    <h1 class="text-4xl font-semibold text-gray-900">SchemaFit Workout History</h1>
+    <a href="{{ url_for('form') }}" class="inline-block text-accent-dark font-medium hover:underline">&larr; Log New Workout</a>
+
+    <div class="space-y-6 mt-4">
+      {% for w in workouts %}
+      <div class="p-6 bg-white rounded-2xl shadow-md space-y-4">
+        <div>
+          <h2 class="text-2xl font-semibold text-gray-900">{{ w.date }} &mdash; {{ w.type }}</h2>
+        </div>
+        <p class="text-sm text-gray-700 font-medium">
+          Measurements:
+          Weight: {{ w.measurements.weight if w.measurements.weight is not none else '—' }} kg,
+          Arm: {{ w.measurements.arm if w.measurements.arm is not none else '—' }} cm,
+          Neck: {{ w.measurements.neck if w.measurements.neck is not none else '—' }} cm,
+          Quad: {{ w.measurements.quad if w.measurements.quad is not none else '—' }} cm,
+          Waist: {{ w.measurements.waist if w.measurements.waist is not none else '—' }} cm
+        </p>
+        {% for ex in w.exercises %}
+        <div class="pl-4">
+          <h3 class="text-lg font-medium text-gray-800">{{ ex.name }}</h3>
           {% for s in ex.sets %}
-            <div class="set">
-              Weight: {{ s.weight }} kg — Reps: {{ s.reps }}{% if s.comment %} — Comment: {{ s.comment }}{% endif %}
-            </div>
+          <div class="pl-6 text-sm text-gray-700">
+            Weight: {{ s.weight }} kg &mdash; Reps: {{ s.reps }}{% if s.comment %} &mdash; Comment: {{ s.comment }}{% endif %}
+          </div>
           {% endfor %}
         </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-gray-600">No workouts logged yet.</p>
       {% endfor %}
     </div>
-  {% else %}
-    <p>No workouts logged yet.</p>
-  {% endfor %}
+  </div>
 </body>
 </html>
