@@ -49,4 +49,4 @@ def history():
     return render_template('history.html', workouts=workouts)
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run("0.0.0.0")

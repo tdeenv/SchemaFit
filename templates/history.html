@@ -16,19 +16,35 @@
           },
           colors: {
             accent: {
-              light: '#3B823A',  /* Dark Green */
-              dark: '#9B4F96',   /* Purple */
+              light: '#3B823A',
+              dark: '#9B4F96',
             }
           }
         }
       }
     }
   </script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="min-h-screen bg-gradient-to-br from-accent-light to-accent-dark font-sans flex items-center justify-center p-6">
   <div class="w-full max-w-3xl bg-white/90 backdrop-blur-lg rounded-3xl shadow-xl p-8 space-y-6">
     <h1 class="text-4xl font-semibold text-gray-900">SchemaFit Workout History</h1>
     <a href="{{ url_for('form') }}" class="inline-block text-accent-dark font-medium hover:underline">&larr; Log New Workout</a>
+
+    <div class="my-8">
+      <h2 class="text-2xl font-bold text-gray-800">Body Measurements Over Time</h2>
+      <canvas id="bodyChart" class="w-full max-w-2xl mx-auto my-6"></canvas>
+    </div>
+
+    <div class="my-8">
+      <h2 class="text-2xl font-bold text-gray-800">Strength Progression (Estimated 1RM)</h2>
+      <label for="exerciseSelect" class="block text-sm font-medium text-gray-700 mb-1">Select Exercise</label>
+      <select id="exerciseSelect" class="w-full max-w-md mb-4 px-4 py-2 rounded border border-gray-300">
+        <option value="">-- Select an exercise --</option>
+      </select>
+      <canvas id="strengthChart" class="w-full max-w-2xl mx-auto my-6"></canvas>
+    </div>
 
     <div class="space-y-6 mt-4">
       {% for w in workouts %}
@@ -60,5 +76,108 @@
       {% endfor %}
     </div>
   </div>
+
+  <script>
+    const dates = {{ workouts | map(attribute='date') | list | tojson }}.reverse();
+    const measurements = {{ workouts | map(attribute='measurements') | list | tojson }}.reverse();
+
+    const chartData = {
+      labels: dates,
+      datasets: [
+        { label: 'Weight (kg)', data: measurements.map(m => m.weight), borderColor: '#3B823A', fill: false },
+        { label: 'Waist (cm)', data: measurements.map(m => m.waist), borderColor: '#9B4F96', fill: false },
+        { label: 'Arm (cm)', data: measurements.map(m => m.arm), borderColor: '#6366F1', fill: false },
+        { label: 'Neck (cm)', data: measurements.map(m => m.neck), borderColor: '#F59E0B', fill: false },
+        { label: 'Quad (cm)', data: measurements.map(m => m.quad), borderColor: '#10B981', fill: false }
+      ]
+    };
+
+    new Chart(document.getElementById('bodyChart'), {
+      type: 'line',
+      data: chartData,
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { position: 'bottom' },
+          title: { display: true, text: 'Body Measurements Over Time' }
+        },
+        scales: { y: { beginAtZero: false } }
+      }
+    });
+
+    // Strength chart setup
+    const workouts = {{ workouts | tojson }}.reverse();
+    const exerciseMap = {};
+
+    workouts.forEach(w => {
+      w.exercises.forEach(ex => {
+        if (!exerciseMap[ex.name]) {
+          exerciseMap[ex.name] = [];
+        }
+        // Best set by estimated 1RM that day
+        const bestSet = ex.sets.reduce((best, s) => {
+          const current1RM = s.weight * (1 + s.reps / 30);
+          const best1RM = best ? best.weight * (1 + best.reps / 30) : 0;
+          return current1RM > best1RM ? s : best;
+        }, null);
+
+        if (bestSet) {
+          exerciseMap[ex.name].push({
+            date: w.date,
+            oneRM: bestSet.weight * (1 + bestSet.reps / 30)
+          });
+        }
+      });
+    });
+
+    const exerciseSelect = document.getElementById('exerciseSelect');
+    const strengthChartEl = document.getElementById('strengthChart');
+    let strengthChart;
+
+    Object.keys(exerciseMap).forEach(name => {
+      const option = document.createElement('option');
+      option.value = name;
+      option.textContent = name;
+      exerciseSelect.appendChild(option);
+    });
+
+    exerciseSelect.addEventListener('change', () => {
+      const selected = exerciseSelect.value;
+      if (!selected || !exerciseMap[selected]) return;
+
+      const data = exerciseMap[selected].map(p => p.oneRM);
+      const labels = exerciseMap[selected].map(p => p.date);
+
+      if (strengthChart) strengthChart.destroy();
+
+      strengthChart = new Chart(strengthChartEl, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: `Estimated 1RM for ${selected}`,
+            data,
+            borderColor: '#9B4F96',
+            fill: false
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { position: 'bottom' },
+            title: {
+              display: true,
+              text: `1RM Progression: ${selected}`
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: false
+            }
+          }
+        }
+      });
+    });
+  </script>
 </body>
 </html>
