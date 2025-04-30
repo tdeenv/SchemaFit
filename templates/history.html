@@ -3,9 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>SchemaFit Workout History</title>
-  <!-- Source Code Pro Font -->
   <link href="https://fonts.googleapis.com/css2?family=Source+Code+Pro&display=swap" rel="stylesheet">
-  <!-- Tailwind CDN + Config -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -19,22 +17,46 @@
               light: '#3B823A',
               dark: '#9B4F96',
             }
+          },
+          transitionProperty: {
+            height: 'height',
           }
         }
       }
     }
   </script>
-  <!-- Chart.js CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+  <style>
+    .fade-enter {
+      opacity: 0;
+    }
+    .fade-enter-active {
+      transition: opacity 0.5s ease-in-out;
+      opacity: 1;
+    }
+  </style>
 </head>
-<body class="min-h-screen bg-gradient-to-br from-accent-light to-accent-dark font-sans flex items-center justify-center p-6">
-  <div class="w-full max-w-3xl bg-white/90 backdrop-blur-lg rounded-3xl shadow-xl p-8 space-y-6">
+<body class="min-h-screen bg-gradient-to-br from-accent-light to-accent-dark font-sans p-6">
+  <div class="max-w-4xl mx-auto bg-white/90 backdrop-blur-lg rounded-3xl shadow-xl p-8 space-y-6">
     <h1 class="text-4xl font-semibold text-gray-900">SchemaFit Workout History</h1>
     <a href="{{ url_for('form') }}" class="inline-block text-accent-dark font-medium hover:underline">&larr; Log New Workout</a>
 
     <div class="my-8">
       <h2 class="text-2xl font-bold text-gray-800">Body Measurements Over Time</h2>
-      <canvas id="bodyChart" class="w-full max-w-2xl mx-auto my-6"></canvas>
+      <label for="measurementSelect" class="block text-sm font-medium text-gray-700 mb-1">Select Measurement</label>
+      <select id="measurementSelect" class="w-full max-w-md mb-4 px-4 py-2 rounded border border-gray-300">
+        <option value="">-- Select a measurement --</option>
+        <option value="weight">Weight (kg)</option>
+        <option value="waist">Waist (cm)</option>
+        <option value="arm">Arm (cm)</option>
+        <option value="neck">Neck (cm)</option>
+        <option value="quad">Quad (cm)</option>
+      </select>
+      <div id="bodyChartWrapper" class="hidden opacity-0 transition-opacity duration-500">
+        <canvas id="bodyChart" class="w-full max-w-2xl mx-auto my-6"></canvas>
+      </div>
     </div>
 
     <div class="my-8">
@@ -43,70 +65,80 @@
       <select id="exerciseSelect" class="w-full max-w-md mb-4 px-4 py-2 rounded border border-gray-300">
         <option value="">-- Select an exercise --</option>
       </select>
-      <canvas id="strengthChart" class="w-full max-w-2xl mx-auto my-6"></canvas>
+      <div id="strengthChartWrapper" class="hidden opacity-0 transition-opacity duration-500">
+        <canvas id="strengthChart" class="w-full max-w-2xl mx-auto my-6"></canvas>
+      </div>
     </div>
 
-    <div class="space-y-6 mt-4">
-      {% for w in workouts %}
-      <div class="p-6 bg-white rounded-2xl shadow-md space-y-4">
-        <div>
-          <h2 class="text-2xl font-semibold text-gray-900">{{ w.date }} &mdash; {{ w.type }}</h2>
-        </div>
-        <p class="text-sm text-gray-700 font-medium">
-          Measurements:
-          Weight: {{ w.measurements.weight if w.measurements.weight is not none else '—' }} kg,
-          Arm: {{ w.measurements.arm if w.measurements.arm is not none else '—' }} cm,
-          Neck: {{ w.measurements.neck if w.measurements.neck is not none else '—' }} cm,
-          Quad: {{ w.measurements.quad if w.measurements.quad is not none else '—' }} cm,
-          Waist: {{ w.measurements.waist if w.measurements.waist is not none else '—' }} cm
-        </p>
-        {% for ex in w.exercises %}
-        <div class="pl-4">
-          <h3 class="text-lg font-medium text-gray-800">{{ ex.name }}</h3>
-          {% for s in ex.sets %}
-          <div class="pl-6 text-sm text-gray-700">
-            Weight: {{ s.weight }} kg &mdash; Reps: {{ s.reps }}{% if s.comment %} &mdash; Comment: {{ s.comment }}{% endif %}
-          </div>
-          {% endfor %}
-        </div>
-        {% endfor %}
-      </div>
-      {% else %}
-      <p class="text-gray-600">No workouts logged yet.</p>
-      {% endfor %}
+    <div class="my-8">
+      <h2 class="text-2xl font-bold text-gray-800">Workout Calendar</h2>
+      <div id="calendar" class="bg-white rounded-lg shadow p-4"></div>
+      <div id="workoutDetail" class="mt-4 hidden transition-all duration-500 overflow-hidden max-h-0 p-0"></div>
     </div>
   </div>
 
   <script>
-    const dates = {{ workouts | map(attribute='date') | list | tojson }}.reverse();
-    const measurements = {{ workouts | map(attribute='measurements') | list | tojson }}.reverse();
+    const workouts = {{ workouts | tojson }}.reverse();
+    const dates = workouts.map(w => w.date);
+    const measurements = workouts.map(w => w.measurements);
 
-    const chartData = {
-      labels: dates,
-      datasets: [
-        { label: 'Weight (kg)', data: measurements.map(m => m.weight), borderColor: '#3B823A', fill: false },
-        { label: 'Waist (cm)', data: measurements.map(m => m.waist), borderColor: '#9B4F96', fill: false },
-        { label: 'Arm (cm)', data: measurements.map(m => m.arm), borderColor: '#6366F1', fill: false },
-        { label: 'Neck (cm)', data: measurements.map(m => m.neck), borderColor: '#F59E0B', fill: false },
-        { label: 'Quad (cm)', data: measurements.map(m => m.quad), borderColor: '#10B981', fill: false }
-      ]
-    };
+    const measurementSelect = document.getElementById('measurementSelect');
+    const bodyChartEl = document.getElementById('bodyChart');
+    const bodyChartWrapper = document.getElementById('bodyChartWrapper');
+    let bodyChart;
 
-    new Chart(document.getElementById('bodyChart'), {
-      type: 'line',
-      data: chartData,
-      options: {
-        responsive: true,
-        plugins: {
-          legend: { position: 'bottom' },
-          title: { display: true, text: 'Body Measurements Over Time' }
+    measurementSelect.addEventListener('change', () => {
+      const key = measurementSelect.value;
+      if (!key) return;
+
+      bodyChartWrapper.classList.remove('hidden');
+      setTimeout(() => bodyChartWrapper.classList.add('opacity-100'), 10);
+
+      const data = measurements.map(m => m[key]);
+      const labelMap = {
+        weight: 'Weight (kg)',
+        waist: 'Waist (cm)',
+        arm: 'Arm (cm)',
+        neck: 'Neck (cm)',
+        quad: 'Quad (cm)'
+      };
+
+      if (bodyChart) bodyChart.destroy();
+
+      bodyChart = new Chart(bodyChartEl, {
+        type: 'line',
+        data: {
+          labels: dates,
+          datasets: [{
+            label: labelMap[key],
+            data,
+            borderColor: '#3B82F6',
+            fill: false,
+            spanGaps: true
+          }]
         },
-        scales: { y: { beginAtZero: false } }
-      }
+        options: {
+          responsive: true,
+          animation: {
+            duration: 1000,
+            easing: 'easeInOutQuart'
+          },
+          plugins: {
+            legend: { position: 'bottom' },
+            title: {
+              display: true,
+              text: `Measurement Over Time: ${labelMap[key]}`
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: false
+            }
+          }
+        }
+      });
     });
 
-    // Strength chart setup
-    const workouts = {{ workouts | tojson }}.reverse();
     const exerciseMap = {};
 
     workouts.forEach(w => {
@@ -114,7 +146,6 @@
         if (!exerciseMap[ex.name]) {
           exerciseMap[ex.name] = [];
         }
-        // Best set by estimated 1RM that day
         const bestSet = ex.sets.reduce((best, s) => {
           const current1RM = s.weight * (1 + s.reps / 30);
           const best1RM = best ? best.weight * (1 + best.reps / 30) : 0;
@@ -132,6 +163,7 @@
 
     const exerciseSelect = document.getElementById('exerciseSelect');
     const strengthChartEl = document.getElementById('strengthChart');
+    const strengthChartWrapper = document.getElementById('strengthChartWrapper');
     let strengthChart;
 
     Object.keys(exerciseMap).forEach(name => {
@@ -144,6 +176,9 @@
     exerciseSelect.addEventListener('change', () => {
       const selected = exerciseSelect.value;
       if (!selected || !exerciseMap[selected]) return;
+
+      strengthChartWrapper.classList.remove('hidden');
+      setTimeout(() => strengthChartWrapper.classList.add('opacity-100'), 10);
 
       const data = exerciseMap[selected].map(p => p.oneRM);
       const labels = exerciseMap[selected].map(p => p.date);
@@ -158,11 +193,16 @@
             label: `Estimated 1RM for ${selected}`,
             data,
             borderColor: '#9B4F96',
-            fill: false
+            fill: false,
+            spanGaps: true
           }]
         },
         options: {
           responsive: true,
+          animation: {
+            duration: 1000,
+            easing: 'easeInOutQuart'
+          },
           plugins: {
             legend: { position: 'bottom' },
             title: {
@@ -177,6 +217,48 @@
           }
         }
       });
+    });
+
+    document.addEventListener('DOMContentLoaded', function() {
+      const calendarEl = document.getElementById('calendar');
+      const detailEl = document.getElementById('workoutDetail');
+
+      const calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        height: 'auto',
+        events: workouts.map(w => ({
+          title: w.type,
+          start: w.date,
+          allDay: true,
+          extendedProps: { workout: w }
+        })),
+        eventClick: function(info) {
+          const w = info.event.extendedProps.workout;
+          const m = w.measurements;
+          const exList = w.exercises.map(e => {
+            const sets = e.sets.map(s => `${s.weight}kg x ${s.reps}${s.comment ? ` (${s.comment})` : ''}`).join('<br>');
+            return `<strong>${e.name}</strong><br>${sets}`;
+          }).join('<hr class="my-2">');
+
+          detailEl.innerHTML = `
+            <h3 class="text-xl font-semibold text-gray-800 mb-2">${w.date} – ${w.type}</h3>
+            <p class="text-sm text-gray-700 mb-2">
+              <strong>Measurements:</strong><br>
+              Weight: ${m.weight ?? '—'} kg<br>
+              Arm: ${m.arm ?? '—'} cm<br>
+              Neck: ${m.neck ?? '—'} cm<br>
+              Quad: ${m.quad ?? '—'} cm<br>
+              Waist: ${m.waist ?? '—'} cm
+            </p>
+            <div class="text-sm text-gray-700">${exList}</div>
+          `;
+          detailEl.classList.remove('hidden');
+          detailEl.classList.remove('max-h-0', 'p-0');
+          detailEl.classList.add('max-h-[1000px]', 'p-4');
+          detailEl.scrollIntoView({ behavior: 'smooth' });
+        }
+      });
+      calendar.render();
     });
   </script>
 </body>
